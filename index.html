@@ -283,10 +283,10 @@
             </div>
         </section>
         
-        <!-- 随机表情生成器 -->
+        <!-- 随机表情刮刮乐 -->
         <section id="random-emoji-generator" class="mb-16 bg-white rounded-xl shadow-lg p-6">
             <h2 class="text-xl font-bold text-primary mb-4 flex items-center">
-                <i class="fa fa-random mr-2"></i> 随机表情生成器
+                <i class="fa fa-random mr-2"></i> 随机表情刮刮乐
             </h2>
             <div class="text-center py-8">
                 <div id="random-emoji-display" class="mx-auto w-80 h-80 rounded-lg shadow-lg overflow-hidden purple-overlay">
@@ -830,7 +830,7 @@
             marquee.style.animation = `marquee ${speed}s linear ${isReverse ? 'reverse' : 'normal'} infinite`;
         }
         
-        // 初始化随机表情生成器（带刮开效果）
+        // 初始化随机表情刮刮乐（带刮开效果）
         function initRandomEmojiGenerator() {
             // 添加点击事件
             generateRandomEmojiBtn.addEventListener('click', () => {
@@ -1219,7 +1219,7 @@
             
             initMarquee();
             
-            // 初始化随机表情生成器
+            // 初始化随机表情刮刮乐
             initRandomEmojiGenerator();
             
             // 初始化表情制作器
