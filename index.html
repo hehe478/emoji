@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可爱表情跑马灯</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    
+    <!-- 配置Tailwind自定义颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF85A2', // 柔和粉色作为主色调
+                        secondary: '#97D2EC', // 浅蓝色作为辅助色
+                        neutral: '#FAFAFA', // 米白色背景
+                        purple: {
+                            light: '#A97CF8',
+                            DEFAULT: '#8B5CF6',
+                            dark: '#7C3AED'
+                        }
+                    },
+                    fontFamily: {
+                        cute: ['Comic Sans MS', 'Chalkboard SE', 'sans-serif'], // 可爱风格字体
+                    },
+                },
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .animate-swing-once {
+                animation: swing 1.5s ease-in-out forwards;
+            }
+            .marquee-container {
+                overflow: hidden;
+                white-space: nowrap;
+            }
+            .marquee-content {
+                display: inline-block;
+                animation: marquee 20s linear infinite;
+            }
+            .marquee-content:hover {
+                animation-play-state: paused;
+            }
+            @keyframes marquee {
+                0% {
+                    transform: translateX(0);
+                }
+                100% {
+                    transform: translateX(-50%);
+                }
+            }
+            .emoji-card {
+                transition: transform 0.3s ease;
+            }
+            .emoji-card:hover {
+                transform: scale(1.1) rotate(5deg);
+            }
+            .fade-in {
+                animation: fadeIn 0.5s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .emoji-part {
+                transition: transform 0.2s ease;
+            }
+            .emoji-part:hover {
+                transform: scale(1.1);
+                cursor: pointer;
+            }
+            .emoji-part.selected {
+                border: 2px solid #FF85A2;
+                border-radius: 50%;
+                background-color: rgba(255, 133, 162, 0.1);
+            }
+            .modal {
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease, visibility 0.3s ease;
+            }
+            .modal.active {
+                opacity: 1;
+                visibility: visible;
+            }
+            .modal-content {
+                transform: translateY(-20px);
+                transition: transform 0.3s ease;
+            }
+            .modal.active .modal-content {
+                transform: translateY(0);
+            }
+            
+            /* BlurFade 动画效果 */
+            .blur-fade {
+                opacity: 0;
+                filter: blur(12px);
+                transform: translateY(20px);
+                transition: opacity 0.8s ease-out, filter 0.8s ease-out, transform 0.8s ease-out;
+            }
+            .blur-fade.visible {
+                opacity: 1;
+                filter: blur(0);
+                transform: translateY(0);
+            }
+
+
+            /* 表情库展示模块动画 */
+            .emoji-display {
+                height: 400px; 
+                min-width: 300px; 
+                perspective: 1000px;
+            }
+            .emoji-item {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                transition: all 0.4s ease-in-out;
+                opacity: 0;
+                transform: scale(0.9) rotateY(0deg);
+                z-index: 10;
+            }
+            .emoji-item.active {
+                opacity: 1;
+                transform: scale(1) rotateY(0deg);
+                z-index: 40;
+                animation: float 3s ease-in-out infinite;
+            }
+            .emoji-item.inactive {
+                opacity: 0.7;
+                transform: scale(0.95) rotateY(var(--rotate-y, 0deg));
+                z-index: 20;
+            }
+            @keyframes float {
+                0%, 100% { transform: scale(1) rotateY(0deg) translateY(0); }
+                50% { transform: scale(1) rotateY(0deg) translateY(-5px); }
+            }
+            .word-animation {
+                display: inline-block;
+                opacity: 0;
+                filter: blur(10px);
+                transform: translateY(5px);
+                transition: all 0.2s ease-in-out;
+            }
+            .button-icon {
+                transition: transform 0.3s ease;
+            }
+            .control-button:hover .button-icon {
+                transform: rotate(12deg);
+            }
+            .control-button:hover .button-icon.right {
+                transform: rotate(-12deg);
+            }
+            #confetti-canvas {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 1000;
+            }
+            .success-message {
+                animation: fadeInOut 2.5s ease-in-out forwards;
+            }
+            @keyframes swing {
+                0% { transform: scale(1); opacity: 0.8; }
+                20% { transform: scale(1.1) rotate(-3deg); opacity: 1; }
+                60% { transform: scale(1.1) rotate(3deg); }
+                100% { transform: scale(1) rotate(0deg); }
+            }
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateY(20px); }
+                20% { opacity: 1; transform: translateY(0); }
+                80% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-20px); }
+            }
+            .purple-gradient-bg {
+                background: linear-gradient(135deg, #A97CF8 0%, #8B5CF6 50%, #7C3AED 100%);
+            }
+            .purple-overlay {
+                background: rgba(139, 92, 246, 0.15);
+            }
+
+        }
+    </style>
+</head>
+<body class="bg-neutral font-cute min-h-screen">
+    <!-- 粒子效果画布 -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- 页面标题 -->
+    <header class="text-center py-8 bg-gradient-to-b from-primary/20 to-transparent">
+        <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-primary mb-2 blur-fade" data-delay="0.25">表情创意实验室</h1>
+        <p class="text-gray-600 max-w-md mx-auto blur-fade" data-delay="0.5">用简单元素拼出专属表情 🎨</p>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- 跑马灯组件 -->
+        <section class="mb-16">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-primary flex items-center">
+                    <i class="fa fa-sliders mr-2"></i> 表情跑马灯
+                </h2>
+                <div class="flex space-x-2">
+                    <button id="speed-down" class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-full transition-all">
+                        <i class="fa fa-minus"></i>
+                    </button>
+                    <button id="speed-up" class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-full transition-all">
+                        <i class="fa fa-plus"></i>
+                    </button>
+                    <button id="reverse" class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-full transition-all">
+                        <i class="fa fa-refresh"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 跑马灯容器 -->
+            <div class="marquee-container bg-white rounded-xl shadow-lg p-4 overflow-hidden relative">
+                <!-- 装饰元素 -->
+                <div class="absolute top-2 left-2 text-secondary opacity-50">
+                    <i class="fa fa-star"></i>
+                </div>
+                <div class="absolute bottom-2 right-2 text-secondary opacity-50">
+                    <i class="fa fa-heart"></i>
+                </div>
+                
+                <!-- 跑马灯内容 -->
+                <div id="marquee" class="marquee-content">
+                    <div id="emoji-container" class="inline-flex space-x-4"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 表情库展示模块 -->
+        <section class="mb-16 bg-white rounded-xl shadow-lg p-6 emoji-gallery">
+            <h2 class="text-xl font-bold text-primary mb-6 flex items-center">
+                <i class="fa fa-th mr-2"></i> 表情库精选
+            </h2>
+            
+            <div class="max-w-4xl mx-auto px-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <!-- 表情展示区 -->
+                    <div class="emoji-display relative h-80 w-full rounded-3xl overflow-hidden shadow-lg min-h-[400px] min-w-full md:min-w-[300px]">
+                        <div id="emoji-items-container" class="relative h-full w-full">
+                            <!-- 表情项将通过JS动态生成 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 信息和控制区 -->
+                    <div>
+                        <div id="emoji-info">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-2" id="emoji-name">开心笑脸</h3>
+                            <p class="text-sm text-gray-500 mb-6" id="emoji-category">基础表情 · 正面情绪</p>
+                            <p class="text-lg text-gray-600 mb-8" id="emoji-description">
+                                这是一个经典的开心笑脸表情，圆圆的脸蛋带着温暖的笑容，适合表达喜悦和友好的情感。
+                            </p>
+                        </div>
+                        
+                        <!-- 控制按钮 -->
+                        <div class="flex space-x-4">
+                            <button id="prev-emoji" class="control-button flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
+                                <i class="fa fa-arrow-left button-icon text-gray-700"></i>
+                            </button>
+                            <button id="next-emoji" class="control-button flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
+                                <i class="fa fa-arrow-right button-icon right text-gray-700"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 随机表情生成器 -->
+        <section id="random-emoji-generator" class="mb-16 bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-xl font-bold text-primary mb-4 flex items-center">
+                <i class="fa fa-random mr-2"></i> 随机表情生成器
+            </h2>
+            <div class="text-center py-8">
+                <div id="random-emoji-display" class="mx-auto w-80 h-80 rounded-lg shadow-lg overflow-hidden purple-overlay">
+                    <div id="loading-placeholder" class="purple-gradient-bg w-full h-full flex items-center justify-center">
+                        <i class="fa fa-magic text-white text-3xl"></i>
+                    </div>
+                </div>
+                <button id="generate-random-emoji" class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-full transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <i class="fa fa-magic mr-2"></i> 生成随机表情
+                </button>
+            </div>
+        </section>
+        
+        <!-- 表情制作器 -->
+        <section id="emoji-maker" class="mb-16">
+            <h2 class="text-xl font-bold text-primary mb-4 flex items-center">
+                <i class="fa fa-paint-brush mr-2"></i> 表情制作器
+            </h2>
+            <div class="bg-white rounded-xl shadow-lg p-6 text-center">
+                <p class="text-gray-600 mb-6">点击下方按钮开始制作你的专属表情！</p>
+                <button id="open-emoji-maker" class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-full transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <i class="fa fa-smile-o mr-2"></i> 开始制作
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-primary/10 py-6 text-center text-gray-600">
+        <p>表情创意实验室 &copy; 2025</p>
+    </footer>
+
+    <!-- 表情制作器弹窗 -->
+    <div id="emoji-maker-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-primary">表情制作器</h3>
+                <button id="close-emoji-maker" class="text-gray-500 hover:text-primary transition-colors">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6">
+                <!-- 表情预览 -->
+                <div class="mb-8 text-center">
+                    <h4 class="text-lg font-medium text-gray-700 mb-4">表情预览</h4>
+                    <div id="emoji-preview" class="relative w-64 h-64 mx-auto bg-yellow-100 rounded-full overflow-hidden">
+                        <img id="hair-img" src="images/hairstyle1.jpg" alt="发型" class="absolute inset-0 w-full h-full object-cover" style="z-index: 10;" />
+                        <img id="eyes-img" src="images/face1.png" alt="眼睛" class="absolute inset-0 w-full h-full object-contain transition-transform duration-300" style="z-index: 20;" />
+                    </div>
+                </div>
+
+                <!-- 控制按钮 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6 text-base">
+                    <!-- 左侧：放大/缩小 -->
+                    <div class="flex flex-col items-center gap-3">
+                        <button id="zoom-in-btn" class="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-md shadow-sm hover:bg-pink-600 transition-colors">
+                            <i class="fa fa-search-plus"></i> 放大眼睛
+                        </button>
+                        <button id="zoom-out-btn" class="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white rounded-md shadow-sm hover:bg-sky-600 transition-colors">
+                            <i class="fa fa-search-minus"></i> 缩小眼睛
+                        </button>
+                    </div>
+
+                    <!-- 中间：方向控制 -->
+                    <div class="flex flex-col items-center gap-2">
+                        <button id="move-up-btn" class="w-24 px-2 py-2 bg-gray-200 text-gray-800 rounded-md shadow-sm hover:bg-gray-300 transition-colors">
+                            <i class="fa fa-arrow-up"></i> 上移
+                        </button>
+                        <div class="flex gap-2">
+                            <button id="move-left-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md shadow-sm hover:bg-gray-300 transition-colors">
+                                <i class="fa fa-arrow-left"></i> 左移
+                            </button>
+                            <button id="move-right-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md shadow-sm hover:bg-gray-300 transition-colors">
+                                <i class="fa fa-arrow-right"></i> 右移
+                            </button>
+                        </div>
+                        <button id="move-down-btn" class="w-24 px-2 py-2 bg-gray-200 text-gray-800 rounded-md shadow-sm hover:bg-gray-300 transition-colors">
+                            <i class="fa fa-arrow-down"></i> 下移
+                        </button>
+                    </div>
+
+                    <!-- 右侧：重置/完成 -->
+                    <div class="flex flex-col items-center gap-3">
+                        <button id="complete-btn" class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-md shadow-sm hover:bg-green-600 transition-colors">
+                            <i class="fa fa-check"></i> 完成
+                        </button>
+                        <button id="reset-btn" class="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-white rounded-md shadow-sm hover:bg-yellow-500 transition-colors">
+                            <i class="fa fa-undo"></i> 重置
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 成功消息 -->
+                <div id="success-message" class="success-message absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg font-bold text-xl z-20 hidden">
+                    🎉 表情制作完成，太棒啦！
+                </div>
+
+                <!-- 元素选择区域 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <!-- 发型选择 -->
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-3">选择发型</h4>
+                        <div id="hair-options" class="flex flex-wrap gap-3"></div>
+                    </div>
+
+                    <!-- 眼睛选择 -->
+                    <div>
+                        <h4 class="text-md font-medium text-gray-700 mb-3">选择眼睛</h4>
+                        <div id="eyes-options" class="flex flex-wrap gap-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 控制逻辑 -->
+    <script>
+        // 表情数据
+        const emojis = [
+            { image: 'images/marquee1.jpg', alt: '愤怒表情', title: '愤怒脸', bgClass: 'bg-primary/10' },
+            { image: 'images/marquee2.jpg', alt: '惊喜表情', title: '惊喜脸', bgClass: 'bg-secondary/10' },
+            { image: 'images/marquee3.jpg', alt: '发火表情', title: '发火脸', bgClass: 'bg-primary/10' },
+            { image: 'images/marquee4.jpg', alt: '无助表情', title: '无助脸', bgClass: 'bg-secondary/10' },
+            { image: 'images/marquee5.jpg', alt: '害羞表情', title: '害羞脸', bgClass: 'bg-primary/10' },
+            { image: 'images/marquee6.jpg', alt: '郁闷表情', title: '郁闷脸', bgClass: 'bg-secondary/10' },
+            { image: 'images/marquee7.jpg', alt: '疑惑表情', title: '疑惑脸', bgClass: 'bg-primary/10' },
+            { image: 'images/marquee8.jpg', alt: '大哭表情', title: '大哭脸', bgClass: 'bg-secondary/10' }
+        ];
+
+        // 表情库数据
+        const emojiGallery = [
+            {
+                src: 'images/card1.jpg',
+                name: '崩溃小人图鉴',
+                category: '情绪表达・崩溃向',
+                description: '以极简线条勾勒的小人形象，精准捕捉成年人「体面崩塌」的千万种瞬间，是压力宣泄与情绪共鸣的具象化表达。'
+            },
+            {
+                src: 'images/card2.jpg',
+                name: '五官替换表情集',
+                category: '创意表情・五官重构',
+                description: '以趣味化五官重构为核心，通过爱心、闪电、符号化图案等夸张替换，将「色、触电、财迷」等情绪特质具象为表情符号，展现脑洞大开的表情设计逻辑。'
+            },
+            {
+                src: 'images/card3.jpg',
+                name: '面部夸张表情符号图鉴',
+                category: '创意表情・符号体系',
+                description: '集合数十种以极简线条构建的夸张面部符号，通过变形五官、符号化图案演绎多元情绪，构建趣味化表情符号体系。'
+            },
+            {
+                src: 'images/card4.jpg',
+                name: '情绪强化符号图鉴',
+                category: '创意表情・元素设计法',
+                description: '通过线条、符号（汗珠、斜线、星光等）的添加或替换，将惊讶、生气等情绪具象化，如用睫毛强化惊呀、汗线渲染崩溃，解析表情情绪强化的设计逻辑。'
+            },
+            {
+                src: 'images/card5.jpg',
+                name: '外部符号场景化表情图鉴',
+                category: '创意表情・符号赋能法',
+                description: '借助问号、星光、气泡等外部符号，为疑问、闪光、花痴等情绪植入场景记忆点，如惊叹号放大震惊张力，爱心强化花痴氛围，诠释表情场景化的设计路径。'
+            },
+            {
+                src: 'images/card6.jpg',
+                name: '肤色变化情绪图鉴',
+                category: '创意表情・色彩表达',
+                description: '利用暗面、肤色及红润区域的变化，如腹黑的局部暗沉、害羞的脸颊绯红、崩溃的整体灰调，直观强化情绪的视觉传达。'
+            },
+            {
+                src: 'images/card7.jpg',
+                name: '喵星人字母图鉴',
+                category: '创意设计・萌系字母',
+                description: '让猫咪以身体姿态模拟符号轮廓，借斑斓毛色与软萌姿态，将符号赋予治愈萌趣感，构建专属吸猫符号体系。'
+            },
+            {
+                src: 'images/card8.jpg',
+                name: '小龙格林萌趣图鉴',
+                category: '萌系表情・治愈向',
+                description: '圆润萌态的小龙格林，借蛋壳、甜筒、方块形变等趣味场景，演绎疑惑、傲娇、欢脱等情绪，构建治愈系萌龙互动图鉴。'
+            },
+            {
+                src: 'images/card9.jpg',
+                name: '猫咪宇宙图鉴',
+                category: '萌系插画・吸猫治愈',
+                description: '围绕「世界因猫而生动」的意趣，汇聚多毛色、萌态各异的猫咪，以圆润线条勾勒吸猫治愈力，定格喵星人软萌瞬间。'
+            },
+            {
+                src: 'images/card10.jpg',
+                name: '企鹅崽崽萌动图鉴',
+                category: '萌系表情・治愈互动',
+                description: '圆滚滚企鹅以爱心、符号等元素，演绎心动、困倦、疑惑等多样情绪，构建萌趣互动表情体系。'
+            },
+            {
+                src: 'images/card11.jpg',
+                name: '软萌幽灵表情集',
+                category: '萌系表情・治愈氛围',
+                description: '以圆润线条勾勒萌态幽灵，搭配巫师帽、南瓜、蝴蝶结等趣味装饰，演绎害羞、抱歉、好奇等多样情绪，构建治愈系幽灵互动图鉴。'
+            },
+            {
+                src: 'images/card12.jpg',
+                name: '蜡笔小新角色简笔画分步图鉴',
+                category: '绘画教程・动漫角色',
+                description: '通过分步线条，演示蜡笔小新、妮妮等角色及鳄鱼山、小白等形象的头部绘制，拆解萌系简笔技法。'
+            },
+        ];
+
+        // 表情素材数据
+        // 动态生成40个face表情路径
+        const generateFaceImages = () => {
+            const faces = [];
+            for (let i = 1; i <= 40; i++) {
+                faces.push(`images/face${i}.png`);
+            }
+            return faces;
+        };
+
+        // 动态生成14个hairstyle路径
+        const generateHairStyles = () => {
+            const hairs = [];
+            for (let i = 1; i <= 14; i++) {
+                hairs.push(`images/hairstyle${i}.jpg`);
+            }
+            return hairs;
+        };
+
+        // 合并到表情素材对象
+        const 表情素材 = {
+        hair: generateHairStyles(),
+        eyes: generateFaceImages()
+        };
+        // 动态生成30个随机表情图片路径
+        const generateRandomEmojiImages = () => {
+            const images = [];
+            for (let i = 1; i <= 30; i++) {
+                images.push(`images/guess${i}.jpg`); // 确保图片实际存在且格式正确
+            }
+            return images;
+        };
+        // 初始化随机表情数组
+        const randomEmojiImages = generateRandomEmojiImages();
+
+        // 刮开效果组件
+        class ScratchToReveal {
+            constructor(options) {
+                this.options = {
+                    container: null,
+                    imageUrl: '',
+                    width: 200,
+                    height: 200,
+                    revealThreshold: 0.7, // 70% 刮开时自动显示全部
+                    gradientColors: ['#A97CF8', '#F38CB8', '#FDCC92'],
+                    onRevealComplete: () => {},
+                    ...options
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                // 创建容器
+                this.container = document.createElement('div');
+                this.container.className = 'relative w-full h-full';
+                
+                // 创建图片元素
+                this.image = document.createElement('img');
+                this.image.src = this.options.imageUrl;
+                this.image.alt = '刮开查看';
+                this.image.className = 'w-full h-full object-cover';
+                
+                // 创建Canvas用于刮擦效果
+                this.canvas = document.createElement('canvas');
+                this.canvas.width = this.options.width;
+                this.canvas.height = this.options.height;
+                this.canvas.className = 'absolute top-0 left-0 w-full h-full cursor-pointer';
+                
+                // 获取Canvas上下文
+                this.ctx = this.canvas.getContext('2d');
+                
+                // 添加到容器
+                this.container.appendChild(this.image);
+                this.container.appendChild(this.canvas);
+                
+                // 清空父容器并添加组件
+                this.options.container.innerHTML = '';
+                this.options.container.appendChild(this.container);
+                
+                // 初始化涂层
+                this.setupScratchLayer();
+                
+                // 绑定事件
+                this.bindEvents();
+                
+                // 初始化统计
+                this.totalPixels = this.canvas.width * this.canvas.height;
+                this.revealedPixels = 0;
+            }
+            
+            setupScratchLayer() {
+                // 创建渐变背景
+                const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+                this.options.gradientColors.forEach((color, index) => {
+                    gradient.addColorStop(index / (this.options.gradientColors.length - 1), color);
+                });
+                
+                // 填充渐变
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 添加噪点效果
+                this.addNoise();
+            }
+            
+            addNoise() {
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    // 添加随机噪点
+                    const noise = Math.random() * 50 - 25; // -25 to 25
+                    data[i] += noise;     // R
+                    data[i + 1] += noise; // G
+                    data[i + 2] += noise; // B
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+            }
+            
+            bindEvents() {
+                // 鼠标/触摸事件
+                let isDrawing = false;
+                
+                const handleStart = (e) => {
+                    isDrawing = true;
+                    this.handleScratch(e);
+                };
+                
+                const handleMove = (e) => {
+                    if (isDrawing) {
+                        this.handleScratch(e);
+                    }
+                };
+                
+                const handleEnd = () => {
+                    isDrawing = false;
+                    
+                    // 检查是否达到揭示阈值
+                    if (this.revealedPixels / this.totalPixels >= this.options.revealThreshold) {
+                        this.revealAll();
+                    }
+                };
+                
+                // 鼠标事件
+                this.canvas.addEventListener('mousedown', handleStart);
+                this.canvas.addEventListener('mousemove', handleMove);
+                window.addEventListener('mouseup', handleEnd);
+                
+                // 触摸事件
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleStart(e.touches[0]);
+                });
+                
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    handleMove(e.touches[0]);
+                });
+                
+                this.canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    handleEnd();
+                });
+            }
+            
+            handleScratch(event) {
+                // 获取相对于Canvas的坐标
+                const rect = this.canvas.getBoundingClientRect();
+                const x = (event.clientX || event.pageX) - rect.left;
+                const y = (event.clientY || event.pageY) - rect.top;
+                
+                // 擦除圆形区域
+                const radius = 20;
+                this.ctx.globalCompositeOperation = 'destination-out';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // 计算已揭示区域
+                this.calculateRevealedArea();
+            }
+            
+            calculateRevealedArea() {
+                // 获取图像数据
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+                let revealed = 0;
+                
+                // 计算透明像素数量
+                for (let i = 3; i < data.length; i += 4) {
+                    if (data[i] === 0) {
+                        revealed++;
+                    }
+                }
+                
+                // 更新已揭示像素数
+                this.revealedPixels = revealed;
+                
+                // 如果超过阈值，触发完成回调
+                if (this.revealedPixels / this.totalPixels >= 1) {
+                    this.options.onRevealComplete();
+                }
+            }
+            
+            revealAll() {
+                // 完全显示下方图片
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.options.onRevealComplete();
+            }
+        }
+
+        // 获取DOM元素
+        const container = document.getElementById('emoji-container');
+        const marquee = document.getElementById('marquee');
+        const speedDownBtn = document.getElementById('speed-down');
+        const speedUpBtn = document.getElementById('speed-up');
+        const reverseBtn = document.getElementById('reverse');
+        const generateRandomEmojiBtn = document.getElementById('generate-random-emoji');
+        const randomEmojiDisplay = document.getElementById('random-emoji-display');
+        const openEmojiMakerBtn = document.getElementById('open-emoji-maker');
+        const closeEmojiMakerBtn = document.getElementById('close-emoji-maker');
+        const emojiMakerModal = document.getElementById('emoji-maker-modal');
+        const emojiItemsContainer = document.getElementById('emoji-items-container');
+        const prevEmojiBtn = document.getElementById('prev-emoji');
+        const nextEmojiBtn = document.getElementById('next-emoji');
+        const emojiName = document.getElementById('emoji-name');
+        const emojiCategory = document.getElementById('emoji-category');
+        const emojiDescription = document.getElementById('emoji-description');
+        const loadingPlaceholder = document.getElementById('loading-placeholder');
+        
+        // 表情制作器元素
+        const eyesImg = document.getElementById('eyes-img');
+        const hairImg = document.getElementById('hair-img');
+        const successMessage = document.getElementById('success-message');
+        let scale = 1.0;
+        let offsetX = 0;
+        let offsetY = 0;
+        
+        // 初始速度和方向
+        let speed = 20; // 动画持续时间（秒）
+        let isReverse = false;
+        let activeEmojiIndex = 0;
+        let autoplayInterval;
+        
+        // 初始化BlurFade动画
+        function initBlurFade() {
+            const blurFadeElements = document.querySelectorAll('.blur-fade');
+            
+            // 创建一个观察者，检测元素是否进入视口
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // 获取延迟时间（秒）
+                        const delay = parseFloat(entry.target.getAttribute('data-delay')) || 0;
+                        
+                        // 设置延迟显示
+                        setTimeout(() => {
+                            entry.target.classList.add('visible');
+                        }, delay * 1000);
+                        
+                        // 只观察一次
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            // 观察所有带blur-fade类的元素
+            blurFadeElements.forEach(element => {
+                observer.observe(element);
+            });
+        }
+        
+        // 初始化BlurFade动画
+        function initBlurFade() {
+            const blurFadeElements = document.querySelectorAll('.blur-fade');
+            
+            // 创建一个观察者，检测元素是否进入视口
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // 获取延迟时间（秒）
+                        const delay = parseFloat(entry.target.getAttribute('data-delay')) || 0;
+                        
+                        // 设置延迟显示
+                        setTimeout(() => {
+                            entry.target.classList.add('visible');
+                        }, delay * 1000);
+                        
+                        // 只观察一次
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            // 观察所有带blur-fade类的元素
+            blurFadeElements.forEach(element => {
+                observer.observe(element);
+            });
+        }
+        
+        // 初始化跑马灯
+        function initMarquee() {
+            // 生成多轮表情卡片（实现无缝滚动）
+            for (let round = 0; round < 4; round++) {
+                emojis.forEach(emoji => {
+                    // 创建表情卡片元素
+                    const card = createEmojiCard(emoji);
+                    
+                    // 添加到容器
+                    container.appendChild(card);
+                });
+            }
+            
+            // 更新跑马灯动画
+            updateMarquee();
+        }
+        
+        // 创建表情卡片
+        function createEmojiCard(emoji) {
+            const card = document.createElement('div');
+            card.className = `emoji-card ${emoji.bgClass} rounded-lg p-4 shadow-md w-32 text-center`;
+            
+            // 设置卡片内容
+            card.innerHTML = `
+                <img src="${emoji.image}" alt="${emoji.alt}" class="w-20 h-20 mx-auto mb-2 rounded-full object-cover">
+                <p class="text-sm font-medium">${emoji.title}</p>
+            `;
+            
+            return card;
+        }
+        
+        // 更新跑马灯动画
+        function updateMarquee() {
+            marquee.style.animation = `marquee ${speed}s linear ${isReverse ? 'reverse' : 'normal'} infinite`;
+        }
+        
+        // 初始化随机表情生成器（带刮开效果）
+        function initRandomEmojiGenerator() {
+            // 添加点击事件
+            generateRandomEmojiBtn.addEventListener('click', () => {
+                // 随机选择一个图片
+                const selectedImage = randomEmojiImages[Math.floor(Math.random() * randomEmojiImages.length)];
+
+                // 显示加载状态
+                randomEmojiDisplay.innerHTML = '';
+                const loadingContainer = document.createElement('div');
+                loadingContainer.className = 'w-full h-full purple-gradient-bg flex items-center justify-center';
+                loadingContainer.innerHTML = `
+                    <div class="text-center">
+                        <i class="fa fa-magic text-white text-5xl mb-2 animate-spin"></i>
+                        <p class="text-white font-medium">生成中...</p>
+                    </div>
+                `;
+                randomEmojiDisplay.appendChild(loadingContainer);
+                
+                // 模拟加载延迟
+                setTimeout(() => {
+                    // 移除加载状态
+                    randomEmojiDisplay.innerHTML = '';
+                    
+                    // 添加容器
+                    const animationContainer = document.createElement('div');
+                    animationContainer.className = 'mx-auto w-80 h-80 rounded-lg shadow-lg overflow-hidden';
+                    randomEmojiDisplay.appendChild(animationContainer);
+                    
+                    // 创建刮开效果组件
+                    new ScratchToReveal({
+                        container: animationContainer,
+                        imageUrl: selectedImage,
+                        width: 320,
+                        height: 320,
+                        gradientColors: ['#A97CF8', '#F38CB8', '#FDCC92'],
+                        onRevealComplete: () => {
+                            // 刮开完成后的回调 - 添加放大摇摆效果
+                            const revealedImage = animationContainer.querySelector('img');
+                            if (revealedImage) {
+                                // 然后添加单次摇摆动画
+                                setTimeout(() => {
+                                    revealedImage.classList.add('animate-swing-once');
+                                }, 100);
+                            }
+                        }
+                    });
+                }, 1500);
+            });
+        }
+        // 更新眼睛样式
+        const updateEyesStyle = () => {
+            eyesImg.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+        };
+        
+        // 动态生成发型选项（确保第一个为默认选中）
+        function generateHairOptions() {
+            const hairOptionsContainer = document.getElementById('hair-options');
+            hairOptionsContainer.innerHTML = ''; // 清空容器
+            
+            表情素材.hair.forEach((hair, index) => {
+                const hairOption = document.createElement('div');
+                // 第一个选项默认添加selected类
+                hairOption.className = `emoji-part ${index === 0 ? 'selected' : ''}`;
+                hairOption.dataset.type = 'hair';
+                hairOption.dataset.index = index;
+                
+                hairOption.innerHTML = `<img src="${hair}" alt="发型${index + 1}" class="w-10 h-10 rounded-full object-cover" />`;
+                hairOptionsContainer.appendChild(hairOption);
+            });
+        }
+
+        // 动态生成眼睛选项（确保第一个为默认选中）
+        function generateEyesOptions() {
+            const eyesOptionsContainer = document.getElementById('eyes-options');
+            eyesOptionsContainer.innerHTML = ''; // 清空容器
+            
+            表情素材.eyes.forEach((eye, index) => {
+                const eyeOption = document.createElement('div');
+                // 第一个选项默认添加selected类
+                eyeOption.className = `emoji-part ${index === 0 ? 'selected' : ''}`;
+                eyeOption.dataset.type = 'eyes';
+                eyeOption.dataset.index = index;
+                
+                eyeOption.innerHTML = `<img src="${eye}" alt="眼睛${index + 1}" class="w-10 h-10 rounded-full object-cover" />`;
+                eyesOptionsContainer.appendChild(eyeOption);
+            });
+        }
+
+        // 初始化表情制作器
+        function initEmojiMaker() {
+            // 打开弹窗
+            openEmojiMakerBtn.addEventListener('click', () => {
+                emojiMakerModal.classList.add('active');
+                document.body.style.overflow = 'hidden'; // 防止背景滚动
+            });
+            
+            // 关闭弹窗
+            closeEmojiMakerBtn.addEventListener('click', () => {
+                emojiMakerModal.classList.remove('active');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            });
+            
+            // 点击背景关闭弹窗
+            emojiMakerModal.addEventListener('click', (e) => {
+                if (e.target === emojiMakerModal) {
+                    emojiMakerModal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+            
+             // 动态生成所有选项
+            generateHairOptions();
+            generateEyesOptions();
+            
+            // 为动态生成的元素添加事件监听
+            document.addEventListener('click', function(e) {
+                const emojiPart = e.target.closest('.emoji-part');
+                if (emojiPart && ['hair', 'eyes'].includes(emojiPart.dataset.type)) {
+                    const type = emojiPart.dataset.type;
+                    const index = emojiPart.dataset.index;
+                    const imgElement = document.getElementById(`${type}-img`);
+                    
+                    if (imgElement) {
+                        // 添加切换动画
+                        imgElement.style.opacity = '0.5';
+                        setTimeout(() => {
+                            imgElement.src = 表情素材[type][index];
+                            imgElement.style.opacity = '1';
+                        }, 150);
+                    }
+                    
+                    // 更新选中状态
+                    document.querySelectorAll(`[data-type="${type}"]`).forEach(p => p.classList.remove('selected'));
+                    emojiPart.classList.add('selected');
+                }
+            });
+    
+            // 缩放控制
+            document.getElementById('zoom-in-btn').addEventListener('click', () => {
+                scale += 0.05;
+                updateEyesStyle();
+            });
+            
+            document.getElementById('zoom-out-btn').addEventListener('click', () => {
+                scale = Math.max(0.1, scale - 0.05);
+                updateEyesStyle();
+            });
+            
+            // 方向控制
+            const step = 3;
+            document.getElementById('move-up-btn').addEventListener('click', () => {
+                offsetY -= step;
+                updateEyesStyle();
+            });
+            
+            document.getElementById('move-down-btn').addEventListener('click', () => {
+                offsetY += step;
+                updateEyesStyle();
+            });
+            
+            document.getElementById('move-left-btn').addEventListener('click', () => {
+                offsetX -= step;
+                updateEyesStyle();
+            });
+            
+            document.getElementById('move-right-btn').addEventListener('click', () => {
+                offsetX += step;
+                updateEyesStyle();
+            });
+            
+            // 重置按钮逻辑（修改重置时恢复默认选项）
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                // 重置位置和缩放
+                scale = 1.0;
+                offsetX = 0;
+                offsetY = 0;
+                updateEyesStyle();
+
+                // 重置为第一个发型和眼睛
+                if (表情素材.hair.length > 0) {
+                    hairImg.src = 表情素材.hair[0];
+                    // 更新发型选中状态
+                    document.querySelectorAll('[data-type="hair"]').forEach(p => p.classList.remove('selected'));
+                    document.querySelector('[data-type="hair"][data-index="0"]')?.classList.add('selected');
+                }
+                if (表情素材.eyes.length > 0) {
+                    eyesImg.src = 表情素材.eyes[0];
+                    // 更新眼睛选中状态
+                    document.querySelectorAll('[data-type="eyes"]').forEach(p => p.classList.remove('selected'));
+                    document.querySelector('[data-type="eyes"][data-index="0"]')?.classList.add('selected');
+                }
+            });
+            
+            // 完成按钮事件
+            document.getElementById('complete-btn').addEventListener('click', () => {
+                // 检查confetti是否可用
+                if (typeof confetti === 'function') {
+                    fireConfetti();
+                    
+                    // 显示成功消息
+                    successMessage.classList.remove('hidden');
+                    setTimeout(() => {
+                        successMessage.classList.add('hidden');
+                    }, 2500);
+                } else {
+                    alert('粒子效果库加载失败，请检查网络连接！');
+                }
+            });
+        }
+        
+        // 粒子效果
+        function fireConfetti() {
+            // 获取canvas元素
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 确保canvas大小与窗口匹配
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // 使用confetti库
+            confetti({
+                particleCount: 300,
+                spread: 100,
+                origin: { y: 0.6 }
+            });
+            
+            // 添加更多效果
+            setTimeout(() => {
+                confetti({
+                    particleCount: 100,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 }
+                });
+            }, 250);
+            
+            setTimeout(() => {
+                confetti({
+                    particleCount: 100,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 }
+                });
+            }, 500);
+        }
+
+        // 初始化表情库展示
+        function initEmojiGallery() {
+            // 渲染表情项
+            renderEmojiGallery();
+            
+            // 添加事件监听
+            prevEmojiBtn.addEventListener('click', showPrevEmoji);
+            nextEmojiBtn.addEventListener('click', showNextEmoji);
+            
+            // 启动自动播放
+            startAutoplay();
+            
+            // 鼠标悬停时暂停自动播放
+            const emojiGallerySection = document.querySelector('.emoji-gallery');
+            emojiGallerySection.addEventListener('mouseenter', stopAutoplay);
+            emojiGallerySection.addEventListener('mouseleave', startAutoplay);
+        }
+        
+        // 渲染表情库
+        function renderEmojiGallery() {
+            // 清空容器
+            emojiItemsContainer.innerHTML = '';
+            
+            // 创建表情项
+            emojiGallery.forEach((emoji, index) => {
+                const emojiItem = document.createElement('div');
+                emojiItem.className = `emoji-item rounded-3xl overflow-hidden`;
+                
+                // 随机旋转角度（除了当前活动项）
+                const rotateY = index !== activeEmojiIndex ? (Math.random() * 20 - 10) : 0;
+                emojiItem.style.setProperty('--rotate-y', `${rotateY}deg`);
+                
+                // 设置内容
+                emojiItem.innerHTML = `<img src="${emoji.src}" alt="${emoji.name}" class="w-full h-full object-contain" />`;
+                
+                // 添加到容器
+                emojiItemsContainer.appendChild(emojiItem);
+                
+                // 设置初始状态
+                if (index === activeEmojiIndex) {
+                    emojiItem.classList.add('active');
+                } else {
+                    emojiItem.classList.add('inactive');
+                }
+            });
+            
+            // 更新信息
+            updateEmojiInfo();
+        }
+        
+        // 更新表情信息
+        function updateEmojiInfo() {
+            const currentEmoji = emojiGallery[activeEmojiIndex];
+            
+            // 更新文本内容
+            emojiName.textContent = currentEmoji.name;
+            emojiCategory.textContent = currentEmoji.category;
+            
+            // 清空描述并添加逐字动画
+            emojiDescription.textContent = '';
+            const words = currentEmoji.description.split(' ');
+            
+            words.forEach((word, index) => {
+                const span = document.createElement('span');
+                span.className = 'word-animation';
+                span.textContent = word + ' ';
+                emojiDescription.appendChild(span);
+                
+                // 延迟显示每个单词，创建逐字动画效果
+                setTimeout(() => {
+                    span.style.opacity = '1';
+                    span.style.filter = 'blur(0)';
+                    span.style.transform = 'translateY(0)';
+                }, 30 * index);
+            });
+        }
+        
+        // 显示上一个表情
+        function showPrevEmoji() {
+            // 更新索引
+            activeEmojiIndex = (activeEmojiIndex - 1 + emojiGallery.length) % emojiGallery.length;
+            
+            // 更新显示
+            updateEmojiItems();
+        }
+        
+        // 显示下一个表情
+        function showNextEmoji() {
+            // 更新索引
+            activeEmojiIndex = (activeEmojiIndex + 1) % emojiGallery.length;
+            
+            // 更新显示
+            updateEmojiItems();
+        }
+        
+        // 更新表情项状态
+        function updateEmojiItems() {
+            const emojiItems = document.querySelectorAll('.emoji-item');
+            
+            emojiItems.forEach((item, index) => {
+                // 移除所有状态类
+                item.classList.remove('active', 'inactive');
+                
+                // 随机旋转角度（除了当前活动项）
+                const rotateY = index !== activeEmojiIndex ? (Math.random() * 20 - 10) : 0;
+                item.style.setProperty('--rotate-y', `${rotateY}deg`);
+                
+                // 设置新状态
+                if (index === activeEmojiIndex) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.add('inactive');
+                }
+            });
+            
+            // 更新信息
+            updateEmojiInfo();
+        }
+        
+        // 启动自动播放
+        function startAutoplay() {
+            if (!autoplayInterval) {
+                autoplayInterval = setInterval(showNextEmoji, 5000);
+            }
+        }
+        
+        // 停止自动播放
+        function stopAutoplay() {
+            if (autoplayInterval) {
+                clearInterval(autoplayInterval);
+                autoplayInterval = null;
+            }
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化BlurFade动画
+            initBlurFade();
+            
+            initMarquee();
+            
+            // 初始化随机表情生成器
+            initRandomEmojiGenerator();
+            
+            // 初始化表情制作器
+            initEmojiMaker();
+            
+            // 初始化表情库展示
+            initEmojiGallery();
+            
+            // 跑马灯控制按钮事件
+            speedDownBtn.addEventListener('click', () => {
+                if (speed < 60) { // 最大延迟60秒
+                    speed += 5;
+                    updateMarquee();
+                }
+            });
+            
+            speedUpBtn.addEventListener('click', () => {
+                if (speed > 5) { // 最小延迟5秒
+                    speed -= 5;
+                    updateMarquee();
+                }
+            });
+            
+            reverseBtn.addEventListener('click', () => {
+                isReverse = !isReverse;
+                updateMarquee();
+            });
+        });
+    </script>
+</body>
+</html>
+    
