@@ -12,6 +12,25 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
+### 补充条款：图片资源的特殊授权说明  
+本许可证 **仅适用于项目的“软件代码部分”**（包括但不限于 HTML、CSS、JavaScript 源文件）。  
+项目中所有 **图片资源**（如 `images/` 目录下的文件）**不适用本 MIT 许可证**：  
+- 这些图片仅用于**学习演示**，**无商业版权授权**；  
+- 严禁将图片用于任何**商业场景**（包括但不限于产品界面、广告、盈利性活动等），否则可能涉及侵权；  
+- 若需商用，请自行替换为**合法授权的图片资源**（如购买正版素材、使用无版权图库）。  
+
+### Supplementary Provisions: Special License Terms for Image Resources  
+This license applies solely to the "software code components" of the project 
+(including but not limited to HTML, CSS, JavaScript source files). All image 
+resources (e.g., files in the `images/` directory) are excluded from this MIT 
+License and are subject to the following restrictions: (i) these images are provided 
+for educational and demonstration purposes only and carry no commercial licensing rights; 
+(ii) commercial use of these images in any form (including but not limited to product 
+interfaces, advertising, profit-generating activities) is strictly prohibited and may 
+constitute copyright infringement; (iii) for commercial applications, please replace 
+these images with legally licensed resources (e.g., purchased stock photos, content 
+from royalty-free image libraries).
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
